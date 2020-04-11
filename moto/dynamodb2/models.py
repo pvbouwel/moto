@@ -18,6 +18,7 @@ from .comparisons import get_comparison_func
 from .comparisons import get_filter_expression
 from .comparisons import get_expected
 from .exceptions import InvalidIndexNameError, InvalidUpdateExpression, ItemSizeTooLarge
+from .parsing.expressions import UpdateExpressionParser
 
 
 class DynamoJsonEncoder(json.JSONEncoder):
@@ -1413,6 +1414,13 @@ class DynamoDBBackend(BaseBackend):
         condition_expression=None,
     ):
         table = self.get_table(table_name)
+
+        # Support spaces between operators in an update expression
+        # E.g. `a = b + c` -> `a=b+c`
+        if update_expression:
+            # Parse expression to get validation errors
+            UpdateExpressionParser.make(update_expression)
+            update_expression = re.sub(r"\s*([=\+-])\s*", "\\1", update_expression)
 
         if all([table.hash_key_attr in key, table.range_key_attr in key]):
             # Covers cases where table has hash and range keys, ``key`` param
